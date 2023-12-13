@@ -55,3 +55,57 @@ func TestInaccurateLearningModel(t *testing.T) {
 
 	t.Log("False positives:", incorrect, " Expected: ~", limit/2)
 }
+
+func TestPersistence(t *testing.T) {
+	limit := 1000
+
+	realSet := PrepareRealSet(limit)
+	secondSet := PrepareRealSet(limit)
+
+	lm := NewLearningModel(realSet, 0.0)
+
+	incorrect := 0
+
+	for value, _ := range realSet {
+		if !lm.Test(value) {
+			incorrect += 1
+		}
+	}
+
+	check_again := 0
+
+	for value, _ := range realSet {
+		if !lm.Test(value) {
+			check_again += 1
+		}
+	}
+
+	if incorrect != check_again {
+		t.Fatal("False negatives not persistent")
+	} else {
+		t.Log("False negatives are persistent")
+	}
+
+	incorrect = 0
+
+	for value, _ := range secondSet {
+		if lm.Test(value) {
+			incorrect += 1
+		}
+	}
+
+	check_again = 0
+
+	for value, _ := range secondSet {
+		if lm.Test(value) {
+			check_again += 1
+		}
+	}
+
+	if incorrect != check_again {
+		t.Fatal("False positivess not persistent")
+	} else {
+		t.Log("False positives are persistent")
+	}
+
+}
