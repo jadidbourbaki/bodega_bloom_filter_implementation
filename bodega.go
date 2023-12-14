@@ -2,7 +2,10 @@
 package main
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"math/rand"
 
@@ -93,6 +96,56 @@ func NewBodegaBloomFilter(bitsAbove uint, hashesAbove uint, bitsBelow uint, hash
 	return &bodega
 }
 
+type PseudorandomPermutation struct {
+	key []byte
+	iv  []byte
+}
+
+func NewPseudorandomPermutation(key []byte, iv []byte) *PseudorandomPermutation {
+	prp := PseudorandomPermutation{key: key, iv: iv}
+	return &prp
+}
+
+func (prp *PseudorandomPermutation) Encrypt(value uint32) []byte {
+	plaintext := make([]byte, aes.BlockSize)
+	binary.BigEndian.PutUint32(plaintext, value)
+
+	fmt.Println("AES Block Size:", aes.BlockSize)
+
+	block, err := aes.NewCipher(prp.key)
+
+	if err != nil {
+		panic(err)
+	}
+
+	encrypter := cipher.NewCBCEncrypter(block, prp.iv)
+
+	encrypted := make([]byte, aes.BlockSize)
+	encrypter.CryptBlocks(encrypted, plaintext)
+
+	fmt.Println("Encrypted data:", hex.EncodeToString(encrypted))
+
+	return encrypted
+}
+
+func (prp *PseudorandomPermutation) Decrypt(ciphertext []byte) uint32 {
+	block, err := aes.NewCipher(prp.key)
+
+	if err != nil {
+		panic(err)
+	}
+
+	mode := cipher.NewCBCDecrypter(block, prp.iv)
+	mode.CryptBlocks(ciphertext, ciphertext)
+
+	ciphertext = ciphertext[:4]
+
+	value := binary.BigEndian.Uint32(ciphertext)
+
+	fmt.Println("Decrypted data:", value)
+	return value
+}
+
 func (bodega *BodegaBloomFilter) Test(value uint32) bool {
 	serialized := serialize(value)
 
@@ -131,4 +184,9 @@ func main() {
 		fmt.Println("Learning Model: ", lm.Test(value))
 		fmt.Println("Bodega Bloom Filter: ", bodega.Test(value))
 	}
+
+	prp := NewPseudorandomPermutation([]byte("0123456789abcdef0123456789abcdef"), []byte("0123456789abcdef"))
+
+	ciphertext := prp.Encrypt(42)
+	prp.Decrypt(ciphertext)
 }
