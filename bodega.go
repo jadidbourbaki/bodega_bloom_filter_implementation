@@ -75,25 +75,41 @@ func (lm *LearningModel) Test(value uint32) bool {
 }
 
 type BodegaBloomFilter struct {
+	prp                PseudorandomPermutation
 	bloomAbove         bloom.BloomFilter
 	learningModelPatty LearningModel
 	bloomBelow         bloom.BloomFilter
 }
 
 func NewBodegaBloomFilter(bitsAbove uint, hashesAbove uint, bitsBelow uint, hashesBelow uint,
-	realSet map[uint32]bool, learningModelAccuracy float64) *BodegaBloomFilter {
+	realSet map[uint32]bool, learningModelAccuracy float64, key []byte, iv []byte) *BodegaBloomFilter {
 	bloomAbove := bloom.New(bitsAbove, hashesAbove)
 	bloomBelow := bloom.New(bitsBelow, hashesBelow)
 	learningModelPatty := NewLearningModel(realSet, learningModelAccuracy)
+	prp := NewPseudorandomPermutation(key, iv)
 
 	for value, _ := range realSet {
-		serialized := serialize(value)
+		serialized := prp.Encrypt(value)
 		bloomAbove.Add(serialized)
 		bloomBelow.Add(serialized)
 	}
 
-	bodega := BodegaBloomFilter{bloomAbove: *bloomAbove, bloomBelow: *bloomBelow, learningModelPatty: *learningModelPatty}
+	bodega := BodegaBloomFilter{bloomAbove: *bloomAbove, bloomBelow: *bloomBelow, learningModelPatty: *learningModelPatty, prp: *prp}
 	return &bodega
+}
+
+func (bodega *BodegaBloomFilter) Test(value uint32) bool {
+	serialized := bodega.prp.Encrypt(value)
+
+	if !bodega.bloomAbove.Test(serialized) {
+		return false
+	}
+
+	if bodega.learningModelPatty.Test(value) {
+		return true
+	}
+
+	return bodega.bloomBelow.Test(serialized)
 }
 
 type PseudorandomPermutation struct {
@@ -146,20 +162,6 @@ func (prp *PseudorandomPermutation) Decrypt(ciphertext []byte) uint32 {
 	return value
 }
 
-func (bodega *BodegaBloomFilter) Test(value uint32) bool {
-	serialized := serialize(value)
-
-	if !bodega.bloomAbove.Test(serialized) {
-		return false
-	}
-
-	if bodega.learningModelPatty.Test(value) {
-		return true
-	}
-
-	return bodega.bloomBelow.Test(serialized)
-}
-
 func main() {
 	filter := bloom.New(100, 3)
 
@@ -175,8 +177,9 @@ func main() {
 		filter.Add(serialized)
 	}
 
+	key, iv := []byte("0123456789abcdef0123456789abcdef"), []byte("0123456789abcdef")
 	lm := NewLearningModel(realSet, 0.5)
-	bodega := NewBodegaBloomFilter(10, 3, 10, 3, realSet, 0.9)
+	bodega := NewBodegaBloomFilter(90, 3, 10, 3, realSet, 0.9, key, iv)
 
 	for value, _ := range realSet {
 		serialized := serialize(value)
@@ -185,7 +188,9 @@ func main() {
 		fmt.Println("Bodega Bloom Filter: ", bodega.Test(value))
 	}
 
-	prp := NewPseudorandomPermutation([]byte("0123456789abcdef0123456789abcdef"), []byte("0123456789abcdef"))
+	fmt.Println("Checking: ", bodega.Test(97))
+
+	prp := NewPseudorandomPermutation(key, iv)
 
 	ciphertext := prp.Encrypt(42)
 	prp.Decrypt(ciphertext)
