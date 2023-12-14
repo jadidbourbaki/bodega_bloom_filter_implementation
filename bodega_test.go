@@ -16,7 +16,7 @@ func PrepareRealSet(limit int) map[uint32]bool {
 	return realSet
 }
 
-func TestAccurateLearningModel(t *testing.T) {
+func TestLearningModelAccurate(t *testing.T) {
 	realSet := PrepareRealSet(100)
 	lm := NewLearningModel(realSet, 1.0)
 
@@ -27,7 +27,7 @@ func TestAccurateLearningModel(t *testing.T) {
 	}
 }
 
-func TestInaccurateLearningModel(t *testing.T) {
+func TestLearningModelInaccurate(t *testing.T) {
 	limit := 1000
 
 	realSet := PrepareRealSet(limit)
@@ -56,7 +56,7 @@ func TestInaccurateLearningModel(t *testing.T) {
 	t.Log("False positives:", incorrect, " Expected: ~", limit/2)
 }
 
-func TestPersistence(t *testing.T) {
+func TestLearningModelPersistence(t *testing.T) {
 	limit := 1000
 
 	realSet := PrepareRealSet(limit)
@@ -107,5 +107,4 @@ func TestPersistence(t *testing.T) {
 	} else {
 		t.Log("False positives are persistent")
 	}
-
 }

@@ -71,10 +71,40 @@ func (lm *LearningModel) Test(value uint32) bool {
 	return true
 }
 
-type SandwichedBloomFilter struct {
+type BodegaBloomFilter struct {
 	bloomAbove         bloom.BloomFilter
 	learningModelPatty LearningModel
 	bloomBelow         bloom.BloomFilter
+}
+
+func NewBodegaBloomFilter(bitsAbove uint, hashesAbove uint, bitsBelow uint, hashesBelow uint,
+	realSet map[uint32]bool, learningModelAccuracy float64) *BodegaBloomFilter {
+	bloomAbove := bloom.New(bitsAbove, hashesAbove)
+	bloomBelow := bloom.New(bitsBelow, hashesBelow)
+	learningModelPatty := NewLearningModel(realSet, learningModelAccuracy)
+
+	for value, _ := range realSet {
+		serialized := serialize(value)
+		bloomAbove.Add(serialized)
+		bloomBelow.Add(serialized)
+	}
+
+	bodega := BodegaBloomFilter{bloomAbove: *bloomAbove, bloomBelow: *bloomBelow, learningModelPatty: *learningModelPatty}
+	return &bodega
+}
+
+func (bodega *BodegaBloomFilter) Test(value uint32) bool {
+	serialized := serialize(value)
+
+	if !bodega.bloomAbove.Test(serialized) {
+		return false
+	}
+
+	if bodega.learningModelPatty.Test(value) {
+		return true
+	}
+
+	return bodega.bloomBelow.Test(serialized)
 }
 
 func main() {
@@ -93,10 +123,12 @@ func main() {
 	}
 
 	lm := NewLearningModel(realSet, 0.5)
+	bodega := NewBodegaBloomFilter(10, 3, 10, 3, realSet, 0.9)
 
 	for value, _ := range realSet {
 		serialized := serialize(value)
 		fmt.Println("Bloom Filter: ", filter.Test(serialized))
 		fmt.Println("Learning Model: ", lm.Test(value))
+		fmt.Println("Bodega Bloom Filter: ", bodega.Test(value))
 	}
 }
