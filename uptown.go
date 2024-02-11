@@ -2,16 +2,8 @@
 package main
 
 import (
-	"encoding/binary"
-
 	"github.com/bits-and-blooms/bloom/v3"
 )
-
-func serialize(value uint32) []byte {
-	rtn := make([]byte, 4)
-	binary.BigEndian.PutUint32(rtn, value)
-	return rtn
-}
 
 type UptownBodegaFilter struct {
 	prp                PseudorandomPermutation
@@ -33,20 +25,20 @@ func NewUptownBodegaFilter(bitsAbove uint, hashesAbove uint, bitsBelow uint, has
 		bloomBelow.Add(serialized)
 	}
 
-	bodega := UptownBodegaFilter{bloomAbove: *bloomAbove, bloomBelow: *bloomBelow, learningModelPatty: *learningModelPatty, prp: *prp}
-	return &bodega
+	uptown := UptownBodegaFilter{bloomAbove: *bloomAbove, bloomBelow: *bloomBelow, learningModelPatty: *learningModelPatty, prp: *prp}
+	return &uptown
 }
 
-func (bodega *UptownBodegaFilter) Test(value uint32) bool {
-	serialized := bodega.prp.Encrypt(value)
+func (uptown *UptownBodegaFilter) Test(value uint32) bool {
+	serialized := uptown.prp.Encrypt(value)
 
-	if !bodega.bloomAbove.Test(serialized) {
+	if !uptown.bloomAbove.Test(serialized) {
 		return false
 	}
 
-	if bodega.learningModelPatty.Test(value) {
+	if uptown.learningModelPatty.Test(value) {
 		return true
 	}
 
-	return bodega.bloomBelow.Test(serialized)
+	return uptown.bloomBelow.Test(serialized)
 }
