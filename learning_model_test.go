@@ -103,7 +103,7 @@ func TestLearningModelPersistence(t *testing.T) {
 	}
 
 	if incorrect != check_again {
-		t.Fatal("False positivess not persistent")
+		t.Fatal("False positives not persistent")
 	} else {
 		t.Log("False positives are persistent")
 	}
